@@ -1,9 +1,5 @@
 package main
 
-import (
-	"fmt"
-)
-
 type Vessel interface {
 	Storage() *Storage
 	DeltaV() int64 // in m/s
