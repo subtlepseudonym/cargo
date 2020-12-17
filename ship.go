@@ -1,7 +1,7 @@
 package main
 
 type Vessel interface {
-	Storage() *Storage
+	Storage() Storage
 	DeltaV() int64 // in m/s
 }
 
@@ -14,10 +14,31 @@ type Storage struct {
 	// displacement, doesn't make sense for spaceships
 }
 
-// Station is a stationary Vessel that produces and stores cargo
+// Station is a stationary Vessel that produces, consumes, and stores cargo
 type Station struct {
+	Hold Storage
+	Produces []Cargo // list of distinct cargo types produced
+	Consumes []Cargo // list of distinct cargo types consumed
+}
+
+func (s *Station) Storage() Storage {
+	return s.Hold
+}
+
+func (s *Station) DeltaV() int64 {
+	return 0 // stationary
 }
 
 // Ship is a mobile Vessel that holds and transports cargo
 type Ship struct {
+	Hold Storage
+}
+
+func (s *Ship) Storage() Storage {
+	return s.Hold
+}
+
+// Cargo is a type of good
+type Cargo struct {
+	Volume float64 // TODO: might want to use int64 for simplicity / performance
 }
