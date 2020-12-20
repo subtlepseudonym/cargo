@@ -2,7 +2,8 @@ package main
 
 type Vessel interface {
 	Storage() Storage
-	DeltaV() int64 // in m/s
+	Position() (int64, int64) // TODO: 2D for now
+	DeltaV() int64            // in m/s
 }
 
 // Storage holds values for determining the cargo capacity of a Vessel
@@ -12,11 +13,12 @@ type Storage struct {
 	// Tonnage, as a measure of cargo-carrying capacity is actually a measure of volume
 	// Here, we're going to use it as weight because the in-industry term for this,
 	// displacement, doesn't make sense for spaceships
+	Contents []Cargo
 }
 
 // Station is a stationary Vessel that produces, consumes, and stores cargo
 type Station struct {
-	Hold Storage
+	Hold     Storage
 	Produces []Cargo // list of distinct cargo types produced
 	Consumes []Cargo // list of distinct cargo types consumed
 }
@@ -40,5 +42,6 @@ func (s *Ship) Storage() Storage {
 
 // Cargo is a type of good
 type Cargo struct {
-	Volume float64 // TODO: might want to use int64 for simplicity / performance
+	Volume   float64 // TODO: might want to use int64 for simplicity / performance
+	Quantity int64
 }
