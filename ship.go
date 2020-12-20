@@ -108,7 +108,7 @@ func (b *BlastFurnace) Refine() {
 	ironOxide := ironOxideFactor * 3                  // produced
 	carbonDioxide = carbonDioxide + ironOxideFactor   // produced
 
-	usedMagnetite := Min(magnetite, ironOxideFactor)
+	usedMagnetite := ironOxideFactor
 
 	// FeO + CO -> Fe + CO2
 	ironFactor := Min(ironOxide, carbonMonoxide)
@@ -118,7 +118,8 @@ func (b *BlastFurnace) Refine() {
 	// update buffers
 	b.mu.Lock()
 	b.Hematite = b.Hematite - usedHematite
-	b.Magnetite = b.Magnetite - usedMagnetite
+	// TODO: add something about magnetite reclamation to blast furnace description
+	b.Magnetite = b.Magnetite + producedMagnetite - usedMagnetite
 	b.Coke = b.Coke - usedCoke
 	b.Charcoal = b.Charcoal - usedCharcoal
 	b.Oxygen = b.Oxygen - usedOxygen
