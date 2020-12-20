@@ -67,6 +67,7 @@ type BlastFurnace struct {
 // Refine starts the iron refining process. This refines as much iron as possible
 // from the input materials, throwing away excess intermediate materials
 func (b *BlastFurnace) Refine() {
+	// take snapshot of buffers for thread safety
 	b.mu.Lock()
 	hematite := b.Hematite
 	magnetite := b.Magnetite
@@ -75,44 +76,46 @@ func (b *BlastFurnace) Refine() {
 	oxygen := b.Oxygen
 	b.mu.Unlock()
 
-	cokeCarbon := int64(coke * 0.95)
-	charcoalCarbon := int64(charcoal * 0.75)
+	cokeCarbon := int64(float64(coke) * 0.95)
+	charcoalCarbon := int64(float64(charcoal) * 0.75)
 	carbon := cokeCarbon + charcoalCarbon
 
 	// 2C + O2 -> 2CO
-	cabonMonoxideFactor := Min(carbon/2, oxygen/2)
+	carbonMonoxideFactor := Min(carbon/2, oxygen/2)
 	carbonMonoxide := carbonMonoxideFactor * 2
 
 	usedOxygen := carbonMonoxideFactor * 2
 
 	usedCarbon := Min(cokeCarbon, carbonMonoxideFactor*2)
-	usedCoke := usedCarbon / 0.95
+	usedCoke := int64(float64(usedCarbon) / 0.95)
+	// FIXME: may lose some due to rounding errors (is this a problem?)
 
 	remainingCarbon := carbon - usedCarbon
-	usedCharcoal := Min(charcoalCarbon, remainingCarbon) / 0.75
+	usedCharcoal := int64(float64(Min(charcoalCarbon, remainingCarbon)) / 0.75)
+	// FIXME: may lose some due to rounding errors (is this a problem?)
 
 	// 3(Fe2O3) + CO -> 2(Fe3O4) + C02
-	magnetiteFactor := Min(b.Hematite/3, carbonMonoxide)
-	magnetite := 2 * magnetiteFactor
+	magnetiteFactor := Min(hematite/3, carbonMonoxide)
 	carbonMonoxide = carbonMonoxide - magnetiteFactor // consumed
-	magnetite = magnetite + b.Magnetite               // produced
+	producedMagnetite := 2 * magnetiteFactor          // produced
 	carbonDioxide := magnetiteFactor                  // produced
 
 	usedHematite := magnetiteFactor * 3
 
 	// Fe3O4 + CO -> 3(FeO) + CO2
-	ironOxideFactor := Min(magnetite, carbonMonoxide)
+	ironOxideFactor := Min(producedMagnetite+magnetite, carbonMonoxide)
 	carbonMonoxide = carbonMonoxide - ironOxideFactor // consumed
 	ironOxide := ironOxideFactor * 3                  // produced
 	carbonDioxide = carbonDioxide + ironOxideFactor   // produced
 
-	usedMagnetite := ironOxideFactor
+	usedMagnetite := Min(magnetite, ironOxideFactor)
 
 	// FeO + CO -> Fe + CO2
 	ironFactor := Min(ironOxide, carbonMonoxide)
 	iron := ironFactor
 	carbonDioxide = carbonDioxide + ironFactor
 
+	// update buffers
 	b.mu.Lock()
 	b.Hematite = b.Hematite - usedHematite
 	b.Magnetite = b.Magnetite - usedMagnetite
