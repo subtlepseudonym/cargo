@@ -1,5 +1,7 @@
 package main
 
+import "sync"
+
 type Vessel interface {
 	Storage() Storage
 	Position() (int64, int64) // TODO: 2D for now
@@ -44,4 +46,88 @@ func (s *Ship) Storage() Storage {
 type Cargo struct {
 	Volume   float64 // TODO: might want to use int64 for simplicity / performance
 	Quantity int64
+}
+
+type BlastFurnace struct {
+	// TODO: come up with volatiles / impurities for all input materials
+	Hematite  int64 // Fe2 O3
+	Magnetite int64 // Fe3 O4
+
+	Coke     int64 // 95% pure carbon
+	Charcoal int64 // 75% pure carbon
+
+	Oxygen int64 // TODO: how is this imported / refined?
+
+	CarbonDioxide int64
+	Iron          int64
+
+	mu *sync.Mutex
+}
+
+// Refine starts the iron refining process. This refines as much iron as possible
+// from the input materials, throwing away excess intermediate materials
+func (b *BlastFurnace) Refine() {
+	b.mu.Lock()
+	hematite := b.Hematite
+	magnetite := b.Magnetite
+	coke := b.Coke
+	charcoal := b.Charcoal
+	oxygen := b.Oxygen
+	b.mu.Unlock()
+
+	cokeCarbon := int64(coke * 0.95)
+	charcoalCarbon := int64(charcoal * 0.75)
+	carbon := cokeCarbon + charcoalCarbon
+
+	// 2C + O2 -> 2CO
+	cabonMonoxideFactor := Min(carbon/2, oxygen/2)
+	carbonMonoxide := carbonMonoxideFactor * 2
+
+	usedOxygen := carbonMonoxideFactor * 2
+
+	usedCarbon := Min(cokeCarbon, carbonMonoxideFactor*2)
+	usedCoke := usedCarbon / 0.95
+
+	remainingCarbon := carbon - usedCarbon
+	usedCharcoal := Min(charcoalCarbon, remainingCarbon) / 0.75
+
+	// 3(Fe2O3) + CO -> 2(Fe3O4) + C02
+	magnetiteFactor := Min(b.Hematite/3, carbonMonoxide)
+	magnetite := 2 * magnetiteFactor
+	carbonMonoxide = carbonMonoxide - magnetiteFactor // consumed
+	magnetite = magnetite + b.Magnetite               // produced
+	carbonDioxide := magnetiteFactor                  // produced
+
+	usedHematite := magnetiteFactor * 3
+
+	// Fe3O4 + CO -> 3(FeO) + CO2
+	ironOxideFactor := Min(magnetite, carbonMonoxide)
+	carbonMonoxide = carbonMonoxide - ironOxideFactor // consumed
+	ironOxide := ironOxideFactor * 3                  // produced
+	carbonDioxide = carbonDioxide + ironOxideFactor   // produced
+
+	usedMagnetite := ironOxideFactor
+
+	// FeO + CO -> Fe + CO2
+	ironFactor := Min(ironOxide, carbonMonoxide)
+	iron := ironFactor
+	carbonDioxide = carbonDioxide + ironFactor
+
+	b.mu.Lock()
+	b.Hematite = b.Hematite - usedHematite
+	b.Magnetite = b.Magnetite - usedMagnetite
+	b.Coke = b.Coke - usedCoke
+	b.Charcoal = b.Charcoal - usedCharcoal
+	b.Oxygen = b.Oxygen - usedOxygen
+
+	b.Iron = b.Iron + iron
+	b.CarbonDioxide = b.CarbonDioxide + carbonDioxide
+	b.mu.Unlock()
+}
+
+func Min(x, y int64) int64 {
+	if x < y {
+		return x
+	}
+	return y
 }
