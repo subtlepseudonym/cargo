@@ -97,18 +97,16 @@ func (b *BlastFurnace) Refine() {
 	// 3(Fe2O3) + CO -> 2(Fe3O4) + C02
 	magnetiteFactor := Min(hematite/3, carbonMonoxide)
 	carbonMonoxide = carbonMonoxide - magnetiteFactor // consumed
+	usedHematite := magnetiteFactor * 3               // consumed
 	producedMagnetite := 2 * magnetiteFactor          // produced
 	carbonDioxide := magnetiteFactor                  // produced
-
-	usedHematite := magnetiteFactor * 3
 
 	// Fe3O4 + CO -> 3(FeO) + CO2
 	ironOxideFactor := Min(producedMagnetite+magnetite, carbonMonoxide)
 	carbonMonoxide = carbonMonoxide - ironOxideFactor // consumed
+	usedMagnetite := ironOxideFactor                  // consumed
 	ironOxide := ironOxideFactor * 3                  // produced
 	carbonDioxide = carbonDioxide + ironOxideFactor   // produced
-
-	usedMagnetite := ironOxideFactor
 
 	// FeO + CO -> Fe + CO2
 	ironFactor := Min(ironOxide, carbonMonoxide)
