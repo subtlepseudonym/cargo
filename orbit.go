@@ -52,9 +52,32 @@ func (b *Body) At(x, y int) color.Color {
 	return color.Alpha{0}
 }
 
+type Orbit struct {
+	sun  *Body
+	body *Body
+}
+
+func (o *Orbit) ColorModel() color.Model { return color.RGBAModel }
+func (o *Orbit) Bounds() image.Rectangle {
+	return image.Rect(0, 0, screenWidth, screenHeight)
+}
+
+func (o *Orbit) At(x, y int) color.Color {
+	distX := o.sun.x - o.body.x
+	distY := o.sun.y - o.body.y
+	r := math.Sqrt(math.Pow(distX, 2) + math.Pow(distY, 2))
+
+	xx, yy := float64(x)-o.sun.x, float64(y)-o.sun.y
+	if math.Abs(xx*xx+yy*yy-r*r) < r {
+		return color.White
+	}
+	return color.Alpha{0}
+}
+
 type Game struct {
 	sun     *Body
 	planets []*Body
+	orbits  []*Orbit
 }
 
 func (g *Game) Update() error {
@@ -97,6 +120,12 @@ func gravity(sun, planet *Body) (float64, float64) {
 
 func (g *Game) Draw(screen *ebiten.Image) {
 	drawBody(screen, g.sun)
+
+	for _, orbit := range g.orbits {
+		img := ebiten.NewImageFromImage(orbit)
+		screen.DrawImage(img, &ebiten.DrawImageOptions{})
+	}
+
 	for i, planet := range g.planets {
 		drawBody(screen, planet)
 		pos := fmt.Sprintf("%.2f, %.2f", planet.x, planet.y)
@@ -110,8 +139,7 @@ func drawBody(screen *ebiten.Image, body *Body) {
 	geom.Translate(body.x-body.r, body.y-body.r)
 
 	screen.DrawImage(img, &ebiten.DrawImageOptions{
-		GeoM:   geom,
-		Filter: ebiten.FilterNearest,
+		GeoM: geom,
 	})
 }
 
@@ -149,6 +177,10 @@ func main() {
 		planets: []*Body{
 			earth,
 			mars,
+		},
+		orbits: []*Orbit{
+			&Orbit{sol, earth},
+			&Orbit{sol, mars},
 		},
 	}
 
